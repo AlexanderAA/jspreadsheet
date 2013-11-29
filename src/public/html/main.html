@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <title>jSpreadsheet</title>
+        <link rel="stylesheet" type="text/css" href="/css/screen.css" />
+        <script src="/js/jquery-1.10.2.js"></script>
+        
+        <link rel="stylesheet" type="text/css" href="/css/jquery.handsontable.full.css" />
+        <script src="/js/jquery.handsontable.full.js"></script>
+    </head>
+    
+    <body>
+        <div id="main">
+            <div id="rightpanel">
+                <div id="ht"></div>
+            </div>
+            <div id="leftpanel">
+                <div id="messages" data-total="3"></div>
+            </div>
+        </div>
+        <script>
+            $(function() {
+                //--------------------------------------------------------------
+                //--Queue-------------------------------------------------------
+                var Queue = new Array();
+                var syncQueue = function () {
+                    while (Queue.length > 0) {
+                        var result = sendWS(Queue[Queue.length - 1]);
+                        if (result == true) {
+                            Queue.pop();
+                            console.log("Q", Queue);
+                        } else {
+                            break;
+                        };
+                    };
+                };
+                //--------------------------------------------------------------
+                
+                //--------------------------------------------------------------
+                //--Globals-----------------------------------------------------
+                var msgContainer = $('#messages');
+                var maxMessages = msgContainer.attr('data-total');
+                
+                //--- Websocket URL -------
+                var path = '/x'
+                var host = window.location.hostname;
+                if (host == '') { 
+                    host = 'localhost'; 
+                };
+                var protocol = 'wss:';
+                if (window.location.protocol != "https:") {
+                    protocol = 'ws:';
+                };
+                var url = protocol+'//'+host+path;
+                //--------------------------------------------------------------
+                
+                
+                //--Events------------------------------------------------------
+
+                window.addEventListener('beforeunload', function(event) {
+                    socket.close();
+                });
+                //--------------------------------------------------------------
+                
+                //-- Websocket setup -------------------------------------------
+                var socket_onopen = function (event) {
+                    console.log('Socket open.');
+                    syncQueue();
+                };
+                var socket_onclose = function (event) {
+                    console.log('Socket closed.', event);
+                    socket = newSocket(url);
+                };
+                var socket_onerror = function (event) {
+                    console.log('Socket error.', event);
+                };
+                var socket_onmessage = function (event) {
+                    var children = msgContainer.children();
+                    var messagesCount = children.length;
+                    
+                    if (messagesCount >= maxMessages) {
+                        $(children[maxMessages-1]).remove();
+                    };
+                    
+                    var el = $('<div class="message">' + event.data + '</div>');
+                    msgContainer.prepend(el);
+                    
+                    var parsed = jQuery.parseJSON(JSON.parse(event.data));
+                    console.log("Parsed", parsed);
+                    
+                    $('#ht').data('handsontable').setDataAtCell(parsed, "self");
+                };
+                var newSocket = function (url) {
+                    socket = new WebSocket(url);
+                    socket.onopen = socket_onopen;
+                    socket.onclose = socket_onclose;
+                    socket.onerror = socket_onerror;
+                    socket.onmessage = socket_onmessage;
+                    return socket;
+                };
+                socket = newSocket(url);
+                
+                var fixSocket = function (url) {
+                    var readyState = socket.readyState;
+                    if (readyState === WebSocket.CLOSED) {
+                        socket = newSocket(url);
+                    };
+                    if (readyState !== WebSocket.OPEN) {
+                        socket.close();
+                    };
+                };
+                
+                var sendWS = function (message) {
+                    try {
+                        var readyState = socket.readyState;
+                        if (readyState === WebSocket.OPEN) {
+                            socket.send(message);
+                            return true;
+                        };
+                        fixSocket(url);
+                        return false;
+                    } catch (err) {
+                        console.log(err);
+                        fixSocket(url);
+                        return false;
+                    };
+                };
+                //--------------------------------------------------------------
+                
+                
+                //--------------------------------------------------------------
+                //--Handsontable------------------------------------------------
+                var data = [
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                                                                              
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                                                                              
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "",""]
+                ];
+
+                var jsonSerializeSpreadsheet = function () { 
+                    var sdata = theSpreadsheet.getData();
+                    result = JSON.stringify(sdata)
+                    console.log("JSON", result);
+                };
+                
+                $("#ht").handsontable({
+                    data: data,
+                    startRows: 15,
+                    startCols: 15,
+                    beforeChange: function (changes, source) {
+                        if (source !== 'self') {
+                            var changeset   = JSON.stringify(changes);
+                            Queue.unshift(changeset);
+                            console.log("Q", Queue);
+                            syncQueue();
+                        };
+                        return changes;
+                    },
+                });
+                //--------------------------------------------------------------
+            });
+        </script>
+    </body>
+</html>

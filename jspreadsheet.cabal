@@ -1,0 +1,41 @@
+name: jSpreadsheet
+version: 0.1
+cabal-version: >=1.2
+build-type: Simple
+license: BSD3
+author: Alexander Abushkevich
+category: Web
+synopsis: Web-based collaborative spreadsheets (example)
+data-dir: src/public/
+
+executable jServer
+    build-depends: aeson -any,
+                   base -any,
+                   ghc-prim -any,
+                   mtl -any,
+                   network -any,
+                   parsec -any,
+                   regex-posix -any,
+                   text -any,
+                   time -any,
+                   unix-time -any,
+                   bytestring -any,
+                   utf8-string -any,
+                   ghc -any,
+                   tagsoup -any,
+                   TCache -any,
+                   transformers -any, 
+                   random -any,
+                   attoparsec -any,
+                   QuickCheck -any,
+                   ixset -any,
+                   safecopy -any,
+                   stm -any,
+                   vector -any,
+                   websockets -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src/
+    other-modules: WSCommon WSAction WSServer SpreadsheetTypes
+
+
